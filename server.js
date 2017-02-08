@@ -4,6 +4,7 @@ const express = require('express')
 const Slapp = require('slapp')
 const ConvoStore = require('slapp-convo-beepboop')
 const Context = require('slapp-context-beepboop')
+const rp = require('request-promise');
 
 // use `PORT` env var on Beep Boop - default to 3000 locally
 var port = process.env.PORT || 3000
@@ -55,6 +56,77 @@ slapp.message(/^.*([A-Za-z]+\-[1-9][0-9]*).*/i, ['ambient'], (msg, text) => {
     msg.say("> " + word + ": " + links);
 });
 
+
+//***********************************************
+
+slapp.message('friends', (msg) => {
+    msg.say({
+        text: '',
+        attachments: [{
+            text: 'Can we be friends?',
+            fallback: 'Yes or No?',
+            callback_id: 'friends_callback',
+            actions: [{
+                name: 'answer',
+                text: 'Yes',
+                type: 'button',
+                value: 'yes'
+            }, {
+                name: 'answer',
+                text: 'No',
+                type: 'button',
+                value: 'no'
+            }]
+        }]
+    })
+});
+
+var amountYes = 0;
+var emotionImage = `https://dncache-mauganscorp.netdna-ssl.com/thumbseg/834/834174-bigthumbnail.jpg`;
+
+slapp.action('friends_callback', 'answer', (msg, value) => {
+    if (value === 'yes') {
+        msg.respond(msg.body.response_url,
+            `Thats quite nice! This was answered ${++amountYes} times with yes :yellow_heart:`);
+    } else {
+        msg.respond(msg.body.response_url, {
+            text: 'Look what you did!',
+            attachments: [{
+                'fallback': 'Alternative Text',
+                'image_url': emotionImage,
+                'thumb_url': emotionImage
+            }]
+        });
+    }
+});
+
+//***********************************************
+
+
+// provides you help and wisdom in the darkest hours...
+slapp.message('help', ['ambient'], (msg) => {
+
+    var options = {
+        uri: 'http://api.forismatic.com/api/1.0/?method=getQuote&lang=en&format=json',
+        transform: function(body) {
+            return JSON.parse(body);
+        }
+    };
+
+    rp(options)
+        .then(function(result) {
+            msg.say('> ' + result.quoteText + '- _' + result.quoteAuthor + '_');
+        })
+        .catch(function(err) {
+            msg.say(JSON.stringify(err));
+            msg.say('woopsy');
+        });
+});
+
+
+//*********************************************
+// Boiler plate
+//*********************************************
 
 // attach Slapp to express server
 var server = slapp.attachToExpress(express())
